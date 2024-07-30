@@ -1,0 +1,56 @@
+$exportPath = ((Convert-Path .\), "結果.csv" -join '\');
+
+$dbPath = ((Convert-Path .\), "00_Main.accdb" -join '\');
+$connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;";
+
+$connection = New-Object System.Data.OleDb.OleDbConnection($connectionString);
+
+$dummy_KOB240 = "^" * 315;
+$dummy_KOB245 = "^" * 315;
+$dummy_KOB975 = "^" * 112;
+
+
+$query =
+"SELECT
+    [DB調査].[受付番号] AS 受付番号_1
+    [DB調査].[利用者識別番号],
+    [DB調査].[代表局署番号],
+    [DB調査].[代表整理番号],
+    [DB調査].[年分],
+    [DB調査].[申請区分],
+    [DB調査].[受付番号],
+    [DB調査].[KSK連絡],
+    [KOA020].[KOA020],
+    SWITCH([KOB240].[KOB240] IS NOT NULL, [KOB240].[KOB240], TRUE, '${dummy_KOB240}') AS KOB240,
+    SWITCH([KOB245].[KOB245] IS NOT NULL, [KOB245].[KOB245], TRUE, '${dummy_KOB245}') AS KOB245,
+    SWITCH([KOB975].[KOB975] IS NOT NULL, [KOB975].[KOB975], TRUE, '${dummy_KOB975}') AS KOB975
+FROM
+    (((
+    DB調査
+    INNER JOIN KOA020 ON [DB調査].[受付番号] = LEFT([KOA020].[KOA020], 20))
+    LEFT JOIN KOB240 ON [DB調査].[受付番号] = LEFT([KOB240].[KOB240], 20))
+    LEFT JOIN KOB245 ON [DB調査].[受付番号] = LEFT([KOB245].[KOB245], 20))
+    LEFT JOIN KOB975 ON [DB調査].[受付番号] = LEFT([KOB975].[KOB975], 20)
+WHERE [KOB240].[KOB240] IS NOT NULL
+	OR [KOB245].[KOB245] IS NOT NULL
+	OR [KOB975].[KOB975] IS NOT NULL";
+
+$command = New-Object System.Data.OleDb.OleDbCommand($query, $connection);
+$connection.Open();
+$reader = $command.ExecuteReader();
+$table = @();
+$columnNames = $reader.GetSchemaTable() | Select -Expand ColumnName;
+
+while ($reader.Read()) {
+    $row = New-Object PSObject;
+    foreach ($columnName in $columnNames) {
+        $row | Add-Member -MemberType NoteProperty -Name $columnName -Value $reader[$columnName];
+    }
+    $table += $row;
+}
+$table | Format-Table -AutoSize;
+$table|Export-Csv -Path $exportPath -Encoding UTF8 -Delimiter "^" -NoTypeInformation;
+$connection.Close();
+
+$csv = Get-Content $exportPath;
+$csv.Replace('"^"',"^").TrimStart('"').TrimEnd('"') | Out-File $exportPath -Force -Confirm:$false;
