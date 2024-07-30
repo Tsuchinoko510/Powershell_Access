@@ -1,6 +1,6 @@
-$exportPath = ((Convert-Path .\), "結果.csv" -join '\');
+$exportPath = ((Convert-Path .\), "申告書A_令和２年分.csv" -join '\');
 
-$dbPath = ((Convert-Path .\), "00_Main.accdb" -join '\');
+$dbPath = ((Convert-Path .\), "ALL_申告書A_令和２年分.accdb" -join '\');
 $connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;";
 
 $connection = New-Object System.Data.OleDb.OleDbConnection($connectionString);
@@ -9,10 +9,9 @@ $dummy_KOB240 = "^" * 315;
 $dummy_KOB245 = "^" * 315;
 $dummy_KOB975 = "^" * 112;
 
-
 $query =
 "SELECT
-    [DB調査].[受付番号] AS 受付番号_1
+    [DB調査].[受付番号] AS 受付番号_1,
     [DB調査].[利用者識別番号],
     [DB調査].[代表局署番号],
     [DB調査].[代表整理番号],
@@ -48,9 +47,10 @@ while ($reader.Read()) {
     }
     $table += $row;
 }
-$table | Format-Table -AutoSize;
 $table|Export-Csv -Path $exportPath -Encoding UTF8 -Delimiter "^" -NoTypeInformation;
 $connection.Close();
 
 $csv = Get-Content $exportPath;
 $csv.Replace('"^"',"^").TrimStart('"').TrimEnd('"') | Out-File $exportPath -Force -Confirm:$false;
+
+Start-Sleep 30;
