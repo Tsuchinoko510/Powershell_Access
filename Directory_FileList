@@ -1,0 +1,1 @@
+Get-ChildItem -Recurse | Select-Object {$_.Name} > FileList.txt
